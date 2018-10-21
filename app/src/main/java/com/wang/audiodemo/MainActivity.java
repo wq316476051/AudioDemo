@@ -7,7 +7,9 @@ import android.media.AudioTrack;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.media.MediaPlayer;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -21,11 +23,13 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
     private static final String TAG = "MainActivity";
 
-    private Button mBtnPlay, mBtnPause, mBtnStop;
     private ProgressBar mProgressVolume, mProgressDuration;
     private TextView mTvVolume, mTvDurationPercentage;
+    private Button mBtnVolumeUp, mBtnVolumeDown;
+    private Button mBtnPlay, mBtnPause, mBtnStop;
     private AudioPlayer mAudioPlayer;
     private long larger;
+    private AudioManager mAudioManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,40 +38,51 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
         Log.d(TAG, "onCreate: ");
 
-        mBtnPlay = findViewById(R.id.btn_play);
-        mBtnPause = findViewById(R.id.btn_pause);
-        mBtnStop = findViewById(R.id.btn_stop);
-
         mProgressVolume = findViewById(R.id.progress_volume);
         mProgressDuration = findViewById(R.id.progress_duration);
 
         mTvVolume = findViewById(R.id.tv_volume);
         mTvDurationPercentage = findViewById(R.id.tv_duration_percentage);
 
+        mBtnVolumeUp = findViewById(R.id.btn_volume_up);
+        mBtnVolumeDown = findViewById(R.id.btn_volume_down);
+
+        mBtnPlay = findViewById(R.id.btn_play);
+        mBtnPause = findViewById(R.id.btn_pause);
+        mBtnStop = findViewById(R.id.btn_stop);
+
         mAudioPlayer = new AudioPlayer();
         try {
             mAudioPlayer.setDataSource(getAssets().openFd("LaLaLoveOnMyMind.mp3"));
             mAudioPlayer.setCallback(new AudioPlayer.Callback() {
                 @Override
-                public void onVolume(long current, long max) {
-                    if (current > larger) {
-                        larger = current;
-                    }
-                    mProgressVolume.setMax((int) max);
-                    mProgressVolume.setProgress((int) (current));
-                    mTvVolume.setText("current = " + current + "; larger = " + larger + "; max = " + max);
+                public void onLoudlessChange(final long loudless, final long max) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (loudless > larger) {
+                                larger = loudless;
+                                Log.d(TAG, "onLoudlessChange: " + Thread.currentThread());
+                            }
+                            mProgressVolume.setMax((int) max);
+                            mProgressVolume.setProgress((int) (loudless));
+                            mTvVolume.setText("current = " + loudless + "; larger = " + larger + "; max = " + max);
+                        }
+                    });
                 }
 
                 @Override
-                public void onDuration(long current, long max) {
+                public void onPlayProgressChange(long progress, long max) {
                     mProgressDuration.setMax((int) max);
-                    mProgressDuration.setProgress((int) (current));
+                    mProgressDuration.setProgress((int) (progress));
                 }
             });
         } catch (IOException e) {
             e.printStackTrace();
         }
 
+        mBtnVolumeUp.setOnClickListener(this);
+        mBtnVolumeDown.setOnClickListener(this);
         mBtnPlay.setOnClickListener(this);
         mBtnPause.setOnClickListener(this);
         mBtnStop.setOnClickListener(this);
@@ -95,6 +110,27 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 if (mAudioPlayer.isPlaying() || mAudioPlayer.isPaused()) {
                     mAudioPlayer.stop();
                 }
+                break;
+            case R.id.btn_volume_up:
+                Log.d(TAG, "onClick: btn_volume_up");
+//                setVolumeControlStream(AudioManager.STREAM_MUSIC);
+
+                mAudioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+                mAudioManager.adjustVolume(AudioManager.ADJUST_RAISE, 0);
+                break;
+            case R.id.btn_volume_down:
+                Log.d(TAG, "onClick: btn_volume_down");
+//                setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
+
+                mAudioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+                mAudioManager.adjustVolume(AudioManager.ADJUST_LOWER, 0);
+
+//                new Handler().postDelayed(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        mAudioManager.playSoundEffect(AudioManager.FX_KEYPRESS_DELETE);
+//                    }
+//                }, 3000);
                 break;
         }
     }
