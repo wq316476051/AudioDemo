@@ -78,12 +78,6 @@ public class MusicPlayer extends PlayerBase {
         // TODO: 2018/10/28 构造 MediaCodec
         try {
             mMediaDecoder = MediaCodec.createDecoderByType(mMediaFormat.getString(MediaFormat.KEY_MIME));
-            mMediaDecoder.configure(mMediaFormat, null, null, 0);
-
-            MediaFormat inputFormat = mMediaDecoder.getInputFormat();
-            Log.d(TAG, "run: inputFormat = " + inputFormat);
-            mOutputFormat = mMediaDecoder.getOutputFormat();
-            Log.d(TAG, "run: outputFormat = " + mOutputFormat);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -176,10 +170,16 @@ public class MusicPlayer extends PlayerBase {
         @Override
         public void run() {
             mMediaExtractor.seekTo(0, MediaExtractor.SEEK_TO_CLOSEST_SYNC);
+
+            mMediaDecoder.configure(mMediaFormat, null, null, 0);
+            MediaFormat inputFormat = mMediaDecoder.getInputFormat();
+            Log.d(TAG, "run: inputFormat = " + inputFormat);
+            mOutputFormat = mMediaDecoder.getOutputFormat();
+            Log.d(TAG, "run: outputFormat = " + mOutputFormat);
             mMediaDecoder.start();
 
-            createAudioTrack(mMediaFormat);
             mAudioTrack.play();
+            sendStateChangeMessage(mAudioTrack.getPlayState());
 
             boolean isEndOfStream = false;
             MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
@@ -211,6 +211,7 @@ public class MusicPlayer extends PlayerBase {
                 synchronized (mLock) {
                     if (isPaused()) {
                         try {
+                            sendStateChangeMessage(mAudioTrack.getPlayState());
                             Log.d(TAG, "run: before wait");
                             mLock.wait();
                         } catch (InterruptedException e) {
@@ -246,7 +247,7 @@ public class MusicPlayer extends PlayerBase {
                     Log.d(TAG, "run: MediaCodec.INFO_TRY_AGAIN_LATER");
                 }
 
-                if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 1) {
+                if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
                     Log.d(TAG, "run: End of Stream!!!");
                     isEndOfStream = true;
                 }
@@ -254,11 +255,19 @@ public class MusicPlayer extends PlayerBase {
 
             mAudioTrack.stop();
             mMediaDecoder.stop();
+            sendProgressMessage(100, 100);
+            sendStateChangeMessage(mAudioTrack.getPlayState());
         }
     };
 
-    private void createAudioTrack(MediaFormat mediaFormat) {
+    private void sendProgressMessage(int max, int progress) {
+        Message msg = Message.obtain(mHandler, MSG_UPDATE_PROGRESS, max, progress);
+        mHandler.sendMessage(msg);
+    }
 
+    private void sendStateChangeMessage(int playState) {
+        Message msg = Message.obtain(mHandler, MSG_UPDATE_PROGRESS, playState, 0);
+        mHandler.sendMessage(msg);
     }
 
     private MediaFormat getAudioMediaFormat(MediaExtractor mediaExtractor) {

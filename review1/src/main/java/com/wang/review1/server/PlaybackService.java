@@ -37,6 +37,19 @@ public class PlaybackService extends MediaBrowserServiceCompat {
         setSessionToken(mMediaSession.getSessionToken());
 
         mMusicPlayer = new MusicPlayer(this);
+        mMusicPlayer.setCallback(new MusicPlayer.Callback() {
+            @Override
+            public void onProgress(int max, int progress) {
+                // TODO: 2018/10/28 处理广播
+                // TODO: 2018/10/28 返回给客户端 显示
+            }
+
+            @Override
+            public void onStateChanged(int playState) {
+                // TODO: 2018/10/28 处理广播
+                // TODO: 2018/10/28 返回给客户端 校验
+            }
+        });
     }
 
     @Override
