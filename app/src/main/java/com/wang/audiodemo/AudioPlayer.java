@@ -79,20 +79,14 @@ public class AudioPlayer {
             if (mimetype.startsWith("audio")) {
                 mMediaExtractor.selectTrack(index);
                 mMediaFormat = trackFormat;
-                mMimetype = mimetype;
-                mDuration = mMediaFormat.getLong(MediaFormat.KEY_DURATION); // 时间长度，单位 microseconds
-                mSampleRateInHz = mMediaFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE); // 采样率单位 Hz，个每秒，
-                mChannelCount = mMediaFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT); // 声道数
-                mBitRate = mMediaFormat.getInteger(MediaFormat.KEY_BIT_RATE); // 比特率， 单位 bps: bits per second
+                Log.d(TAG, "prepare: mMediaFormat = " + mMediaFormat);
+                // mMediaFormat = {sample-rate=44100, track-id=1, durationUs=180618562, mime=audio/mpeg, channel-count=2, bitrate=128000}
 
-                try {
-                    mPcmEncoding = mMediaFormat.getInteger(MediaFormat.KEY_PCM_ENCODING); // 采样精度、量化精度、量化位深。获取不到，报错。。。
-                } catch (Exception e) {
-                    // 比特率 = 采样率 * 量化位深 * 声道数
-                    mPcmEncoding = mBitRate / (mSampleRateInHz * mChannelCount); // 计算出来等1，蛋疼
-                    mPcmEncoding = mPcmEncoding < 8 ? 8 : mPcmEncoding;
-                    Log.d(TAG, "prepare: mPcmEncoding = " + mPcmEncoding);
-                }
+                mSampleRateInHz = mMediaFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE); // 采样率单位 Hz，个每秒，
+                mDuration = mMediaFormat.getLong(MediaFormat.KEY_DURATION); // 时间长度，单位 microseconds
+                mMimetype = mimetype;
+                mChannelCount = mMediaFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT); // 声道数
+                mBitRate = mMediaFormat.getInteger(MediaFormat.KEY_BIT_RATE); // 比特率， 单位 bps: bits per second【此处应该是压缩后的比特率】
                 break;
             }
         }
@@ -102,6 +96,23 @@ public class AudioPlayer {
         try {
             mMediaDecoder = MediaCodec.createDecoderByType(mMimetype);
             mMediaDecoder.configure(mMediaFormat, null, null, 0); // start later
+
+
+            // TODO for test
+            MediaFormat inputFormat = mMediaDecoder.getInputFormat();
+            Log.d(TAG, "prepare: inputFormat = " + inputFormat);
+            // inputFormat = {sample-rate=44100, mime=audio/mpeg, channel-count=2}
+
+
+            // TODO for test
+            MediaFormat outputFormat = mMediaDecoder.getOutputFormat();
+            Log.d(TAG, "prepare: outputFormat = " + outputFormat);
+            // outputFormat = {sample-rate=44100, pcm-encoding=2, mime=audio/raw, channel-count=2}
+            // 计算比特率：
+            // int bitRate = sample-rate * (pcm-encoding * 8) * 2;
+
+
+
             Log.d(TAG, "prepare: MediaCodec.name = " + mMediaDecoder.getName());
         } catch (IOException e) {
             e.printStackTrace();
